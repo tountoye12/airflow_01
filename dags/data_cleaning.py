@@ -40,6 +40,38 @@ def clean_data(**kwargs):
 
     return df.to_json()
 
+
+def group_by_smoker(ti):
+    json_data = ti.xcom_pull(task_ids='clean_data')
+
+    df = pd.read_json(json_data)
+
+    smoker_df = df.groupby('smoker').agg({
+        'age': 'mean',
+        'bmi': 'mean',
+        'charges': 'mean'
+    }).reset_index()
+
+
+    print(smoker_df)
+
+    smoker_df.to_csv('./output/group_by_smoker.csv', index=False)
+
+def group_by_region(ti):
+    json_data = ti.xcom_pull(task_ids='clean_daka')
+
+    df = pd.read_json(json_data)
+    region_df = df.groupby("region").agg({
+        'age': 'mean',
+        'bmi': 'mean',
+        'charges': 'mean' 
+    }).reset_index()
+
+    print(region_df)
+
+    region_df.to_csv('./output/group_by_region.csv', index=False)
+
+
 with DAG(
     dag_id = 'python_pipeline',
     description = 'Running a python pipeline using Airflow',
@@ -60,6 +92,16 @@ with DAG(
         
     )
 
+    group_by_smoker = PythonOperator(
+        task_id = 'group_by_smoker',
+        python_callable=group_by_smoker
+    )
+
+    group_by_region = PythonOperator(
+        task_id = 'group_by_region',
+        python_callable=group_by_region
+    )
+
     
 
-read_csv_file >> clean_data
+read_csv_file >> clean_data >> [group_by_smoker, group_by_region]
